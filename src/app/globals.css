@@ -148,6 +148,23 @@ a {
   margin-top: 8px;
 }
 
+.trust-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.trust-list span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f9fc;
+  padding: 7px 10px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .empty-cta {
   display: inline-flex;
   align-items: center;
@@ -367,9 +384,24 @@ a {
 
 .section-title {
   margin: 0;
+  font-size: 16px;
+}
+
+.card > .section-title {
   border-bottom: 1px solid var(--line-soft);
   padding: 13px 15px;
-  font-size: 16px;
+}
+
+.section-head {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 13px 15px;
+}
+
+.section-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .form {
@@ -407,6 +439,13 @@ a {
 .textarea {
   min-height: 92px;
   resize: vertical;
+}
+
+.form-note {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .comment-form {

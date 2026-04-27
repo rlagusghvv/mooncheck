@@ -150,7 +150,10 @@ export function MooncheckApp() {
   const embedUrl = activeCase ? getEmbedUrl(activeCase.clipUrl) : "";
   const submitCard = (
     <section className="card" id="submit">
-      <h2 className="section-title">문철 제보</h2>
+      <div className="section-head">
+        <h2 className="section-title">문철 제보</h2>
+        <p>로그인 없이 YouTube 링크만 등록합니다.</p>
+      </div>
       <form className="form" onSubmit={submitCase}>
         <input
           className="input"
@@ -162,7 +165,7 @@ export function MooncheckApp() {
           className="input"
           value={draft.clipUrl}
           onChange={(event) => setDraft((current) => ({ ...current, clipUrl: event.target.value }))}
-          placeholder="YouTube 링크"
+          placeholder="YouTube URL"
         />
         <div className="form-row">
           <input
@@ -187,6 +190,7 @@ export function MooncheckApp() {
           onChange={(event) => setDraft((current) => ({ ...current, issue: event.target.value }))}
           placeholder="무엇을 판정받고 싶은지"
         />
+        <p className="form-note">개인정보, 계정 연동, 파일 업로드 없이 장면 링크와 쟁점만 저장됩니다.</p>
         <button className="primary-button" disabled={saving}>제보 올리기</button>
       </form>
     </section>
@@ -295,8 +299,13 @@ export function MooncheckApp() {
           <div className="grid empty-grid">
             <section className="card empty-state">
               <p className="eyebrow">MOONCHECK.GG</p>
-              <h1 className="case-title">첫 문철을 기다리는 중입니다.</h1>
-              <p className="issue">유튜브에 올린 롤 장면 링크와 쟁점을 남기면 바로 과실비율 투표가 열립니다.</p>
+              <h1 className="case-title">롤 장면 과실비율을 같이 판정합니다.</h1>
+              <p className="issue">로그인 없이 YouTube 링크와 쟁점만 올리면 탑, 정글, 미드, 원딜, 서폿 책임 비율 투표가 열립니다.</p>
+              <div className="trust-list">
+                <span>개인정보 없음</span>
+                <span>설치 없음</span>
+                <span>YouTube 링크만</span>
+              </div>
               <a className="primary-button empty-cta" href="#submit">문철 제보하기</a>
             </section>
             <aside className="stack">{submitCard}</aside>

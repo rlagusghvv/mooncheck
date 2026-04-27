@@ -66,10 +66,16 @@ function validateCreateInput(input: Partial<CreateCaseInput>) {
   if (!clipUrl) throw new Error("YouTube 링크가 필요합니다.");
   if (!issue || issue.length < 5) throw new Error("판정 쟁점은 5자 이상이어야 합니다.");
 
+  let parsedUrl: URL;
   try {
-    new URL(clipUrl);
+    parsedUrl = new URL(clipUrl);
   } catch {
-    throw new Error("올바른 URL을 입력해주세요.");
+    throw new Error("올바른 YouTube URL을 입력해주세요.");
+  }
+
+  const hostname = parsedUrl.hostname.replace(/^www\./, "");
+  if (hostname !== "youtube.com" && hostname !== "youtu.be") {
+    throw new Error("YouTube 링크만 등록할 수 있습니다.");
   }
 
   return {
