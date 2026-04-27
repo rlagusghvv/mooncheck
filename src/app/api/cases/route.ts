@@ -5,7 +5,12 @@ import { createCase, listCases } from "@/lib/store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const accept = request.headers.get("accept") || "";
+  if (accept.includes("text/html")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   return NextResponse.json({ cases: await listCases() });
 }
 

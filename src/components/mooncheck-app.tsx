@@ -335,7 +335,7 @@ export function MooncheckApp() {
           <p className="brand-subtitle">롤 장면 과실비율 커뮤니티</p>
         </a>
         <nav className="nav">
-          <a className="nav-link" href="#live">실시간</a>
+          <a className="nav-link" href="#cases">투표판</a>
           <a className="primary-button" href="#submit">제보</a>
         </nav>
       </header>
@@ -367,7 +367,13 @@ export function MooncheckApp() {
               </div>
               <a className="primary-button empty-cta" href="#submit">첫 투표판 만들기</a>
             </section>
-            <aside className="stack">{submitCard}</aside>
+            <aside className="stack">
+              <section className="card queue-card">
+                <h2 className="section-title">열린 투표판</h2>
+                <p>아직 올라온 장면이 없습니다. 첫 링크를 올리면 이곳에 바로 쌓입니다.</p>
+              </section>
+              {submitCard}
+            </aside>
           </div>
         ) : (
           <div className="grid">
@@ -470,7 +476,7 @@ export function MooncheckApp() {
 
             <aside className="stack">
               <section className="card" id="live">
-                <h2 className="section-title">실시간 판정</h2>
+                <h2 className="section-title">열린 투표판</h2>
                 <div className="case-list">
                   {sortedCases.map((item) => {
                     const itemTopLane = getTopLane(item.positions);
