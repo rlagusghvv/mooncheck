@@ -236,24 +236,12 @@ export function MooncheckApp() {
           <p className="brand-subtitle">롤 장면 과실비율 커뮤니티</p>
         </a>
         <nav className="nav">
-          <a className="nav-link" href="#cases">판정</a>
+          <a className="nav-link" href="#live">실시간</a>
           <a className="primary-button" href="#submit">제보</a>
         </nav>
       </header>
 
       <main className="container" id="cases">
-        <section className="hero">
-          <div>
-            <p className="eyebrow">MOONCHECK.GG</p>
-            <h1>협곡 문철</h1>
-          </div>
-          <div className="tabs">
-            <button className="tab active">핫</button>
-            <button className="tab">최신</button>
-            <button className="tab">종결</button>
-          </div>
-        </section>
-
         {message ? <p className="status-message">{message}</p> : null}
 
         {loading ? (
@@ -269,25 +257,22 @@ export function MooncheckApp() {
             <div className="stack">
               <article className="card">
                 <div className="case-header">
-                  <div className="score-column">
-                    <button className="vote-arrow active">▲</button>
-                    <span>{activeCase.positions[topLane]}</span>
-                    <button className="vote-arrow">▼</button>
-                  </div>
-
                   <div className="case-title-block">
+                    <p className="eyebrow">MOONCHECK.GG</p>
                     <div className="meta">
                       <span className={statusClass(activeCase.status)}>{activeCase.status}</span>
-                      <span>r/mooncheck</span>
-                      <span>·</span>
                       <span>{activeCase.tier}</span>
-                      <span>·</span>
                       <span>{activeCase.timecode}</span>
-                      <span>·</span>
                       <span>{activeCase.voteCount} votes</span>
                     </div>
-                    <h2 className="case-title">{activeCase.title}</h2>
+                    <h1 className="case-title">{activeCase.title}</h1>
                     <p className="issue">{activeCase.issue}</p>
+                  </div>
+
+                  <div className="verdict-card">
+                    <span>현재 결론</span>
+                    <strong>{topLane}</strong>
+                    <em>{activeCase.positions[topLane]}%</em>
                   </div>
                 </div>
 
@@ -332,12 +317,7 @@ export function MooncheckApp() {
                     ))}
                   </div>
 
-                  <div className="summary">
-                    <p className="summary-label">현재 결론</p>
-                    <p className="summary-lane">{topLane}</p>
-                    <p>{activeCase.positions[topLane]}% 책임</p>
-                    <button className="primary-button" disabled={saving} onClick={saveVote}>투표 반영</button>
-                  </div>
+                  <button className="primary-button vote-submit" disabled={saving} onClick={saveVote}>투표 반영</button>
                 </div>
               </article>
 
@@ -367,8 +347,31 @@ export function MooncheckApp() {
               </section>
             </div>
 
-            <aside className="stack" id="submit">
-              <section className="card">
+            <aside className="stack">
+              <section className="card" id="live">
+                <h2 className="section-title">실시간 판정</h2>
+                <div className="case-list">
+                  {sortedCases.map((item) => {
+                    const itemTopLane = getTopLane(item.positions);
+                    return (
+                      <button
+                        key={item.id}
+                        className={`case-list-button ${item.id === activeCase.id ? "active" : ""}`}
+                        onClick={() => setActiveId(item.id)}
+                      >
+                        <span className={statusClass(item.status)}>{item.status}</span>
+                        <span className="meta"> {item.tier}</span>
+                        <p className="case-list-title">{item.title}</p>
+                        <p className="case-list-meta">
+                          {item.category} · {itemTopLane} {item.positions[itemTopLane]}% · {item.voteCount} votes
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="card" id="submit">
                 <h2 className="section-title">문철 제보</h2>
                 <form className="form" onSubmit={submitCase}>
                   <input
@@ -408,34 +411,6 @@ export function MooncheckApp() {
                   />
                   <button className="primary-button" disabled={saving}>제보 올리기</button>
                 </form>
-              </section>
-
-              <section className="card">
-                <h2 className="section-title">실시간 판정</h2>
-                <div className="case-list">
-                  {sortedCases.map((item) => {
-                    const itemTopLane = getTopLane(item.positions);
-                    return (
-                      <button
-                        key={item.id}
-                        className={`case-list-button ${item.id === activeCase.id ? "active" : ""}`}
-                        onClick={() => setActiveId(item.id)}
-                      >
-                        <span className={statusClass(item.status)}>{item.status}</span>
-                        <span className="meta"> {item.tier}</span>
-                        <p className="case-list-title">{item.title}</p>
-                        <p className="case-list-meta">
-                          {item.category} · {itemTopLane} {item.positions[itemTopLane]}% · {item.voteCount} votes
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="card rules">
-                <strong>룰</strong>
-                <p>돈내기 없이 장면과 근거만으로 판정합니다.</p>
               </section>
             </aside>
           </div>
