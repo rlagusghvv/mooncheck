@@ -115,9 +115,12 @@ export function MooncheckApp() {
     let ignore = false;
 
     async function loadCases() {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 4000);
+
       try {
         setLoading(true);
-        const response = await fetch("/api/cases", { cache: "no-store" });
+        const response = await fetch("/api/cases", { cache: "no-store", signal: controller.signal });
         const payload = (await parseApiResponse(response)) as { cases: VerdictCase[] };
         if (ignore) return;
         setCases(payload.cases);
@@ -125,8 +128,13 @@ export function MooncheckApp() {
         const requestedCase = payload.cases.find((item) => item.id === caseId);
         setActiveId((current) => current || requestedCase?.id || payload.cases[0]?.id || "");
       } catch (error) {
-        if (!ignore) setMessage(error instanceof Error ? error.message : "케이스를 불러오지 못했습니다.");
+        if (!ignore) {
+          setCases([]);
+          setActiveId("");
+          setMessage(error instanceof Error && error.name !== "AbortError" ? error.message : "케이스 목록 응답이 늦어 새 투표판부터 열 수 있습니다.");
+        }
       } finally {
+        window.clearTimeout(timeoutId);
         if (!ignore) setLoading(false);
       }
     }
