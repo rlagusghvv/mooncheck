@@ -99,15 +99,20 @@ a {
 }
 
 .nav-link,
-.primary-button {
+.primary-button,
+.secondary-button {
   min-height: 40px;
-  border: 0;
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 14px;
   font-weight: 900;
   text-align: center;
   text-decoration: none;
+}
+
+.nav-link,
+.primary-button {
+  border: 0;
 }
 
 .nav-link {
@@ -122,6 +127,19 @@ a {
 
 .primary-button:hover {
   background: var(--blue-dark);
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #344054;
+}
+
+.secondary-button:hover {
+  background: #f7f9fc;
 }
 
 .container {
@@ -163,6 +181,24 @@ a {
   color: #344054;
   font-size: 13px;
   font-weight: 900;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.steps span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
 }
 
 .empty-cta {
@@ -243,6 +279,13 @@ a {
   color: #475467;
   font-size: 14px;
   line-height: 1.65;
+}
+
+.case-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .verdict-card {
@@ -525,6 +568,7 @@ a {
 
   .topbar {
     align-items: stretch;
+    gap: 8px;
     padding: 10px;
   }
 
@@ -538,12 +582,22 @@ a {
 
   .nav {
     flex: 0 0 190px;
+    gap: 6px;
   }
 
   .nav-link,
-  .primary-button {
+  .primary-button,
+  .secondary-button {
     flex: 1;
     padding: 10px 8px;
+  }
+
+  .empty-state {
+    padding: 14px;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
   }
 
   .case-header {
@@ -587,6 +641,11 @@ a {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .case-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }
 

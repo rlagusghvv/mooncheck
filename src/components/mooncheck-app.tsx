@@ -121,7 +121,9 @@ export function MooncheckApp() {
         const payload = (await parseApiResponse(response)) as { cases: VerdictCase[] };
         if (ignore) return;
         setCases(payload.cases);
-        setActiveId((current) => current || payload.cases[0]?.id || "");
+        const caseId = new URLSearchParams(window.location.search).get("case");
+        const requestedCase = payload.cases.find((item) => item.id === caseId);
+        setActiveId((current) => current || requestedCase?.id || payload.cases[0]?.id || "");
       } catch (error) {
         if (!ignore) setMessage(error instanceof Error ? error.message : "케이스를 불러오지 못했습니다.");
       } finally {
@@ -148,18 +150,39 @@ export function MooncheckApp() {
 
   const topLane = activeCase ? getTopLane(activeCase.positions) : "정글";
   const embedUrl = activeCase ? getEmbedUrl(activeCase.clipUrl) : "";
+
+  function getCaseUrl(caseId: string) {
+    return `${window.location.origin}${window.location.pathname}?case=${caseId}`;
+  }
+
+  function selectCase(caseId: string) {
+    setActiveId(caseId);
+    window.history.replaceState(null, "", `?case=${caseId}#cases`);
+  }
+
+  async function copyCaseLink() {
+    if (!activeCase) return;
+
+    try {
+      await navigator.clipboard.writeText(getCaseUrl(activeCase.id));
+      setMessage("사건 링크를 복사했습니다.");
+    } catch {
+      setMessage("링크 복사에 실패했습니다. 주소창 URL을 복사해주세요.");
+    }
+  }
+
   const submitCard = (
     <section className="card" id="submit">
       <div className="section-head">
-        <h2 className="section-title">문철 제보</h2>
-        <p>로그인 없이 YouTube 링크만 등록합니다.</p>
+        <h2 className="section-title">장면 올리기</h2>
+        <p>YouTube 링크, 싸운 지점, 한 줄 쟁점만 있으면 됩니다.</p>
       </div>
       <form className="form" onSubmit={submitCase}>
         <input
           className="input"
           value={draft.title}
           onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-          placeholder="사건 제목"
+          placeholder="예: 22분 용 한타 이거 정글 잘못임?"
         />
         <input
           className="input"
@@ -188,10 +211,10 @@ export function MooncheckApp() {
           className="textarea"
           value={draft.issue}
           onChange={(event) => setDraft((current) => ({ ...current, issue: event.target.value }))}
-          placeholder="무엇을 판정받고 싶은지"
+          placeholder="예: 말파 궁 진입이 맞았는지, 원딜 포지션이 문제였는지"
         />
         <p className="form-note">개인정보, 계정 연동, 파일 업로드 없이 장면 링크와 쟁점만 저장됩니다.</p>
-        <button className="primary-button" disabled={saving}>제보 올리기</button>
+        <button className="primary-button" disabled={saving}>투표판 만들기</button>
       </form>
     </section>
   );
@@ -242,8 +265,9 @@ export function MooncheckApp() {
       const payload = (await parseApiResponse(response)) as { case: VerdictCase };
       setCases((current) => [payload.case, ...current]);
       setActiveId(payload.case.id);
+      window.history.replaceState(null, "", `?case=${payload.case.id}#cases`);
       setDraft({ title: "", clipUrl: "", timecode: "", tier: "Gold", issue: "" });
-      setMessage("문철 제보가 등록됐습니다.");
+      setMessage("투표판이 열렸습니다. 사건 링크를 커뮤니티에 공유하면 됩니다.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "문철 제보를 저장하지 못했습니다.");
     } finally {
@@ -298,15 +322,22 @@ export function MooncheckApp() {
         ) : !activeCase ? (
           <div className="grid empty-grid">
             <section className="card empty-state">
-              <p className="eyebrow">MOONCHECK.GG</p>
-              <h1 className="case-title">롤 장면 과실비율을 같이 판정합니다.</h1>
-              <p className="issue">로그인 없이 YouTube 링크와 쟁점만 올리면 탑, 정글, 미드, 원딜, 서폿 책임 비율 투표가 열립니다.</p>
-              <div className="trust-list">
-                <span>개인정보 없음</span>
-                <span>설치 없음</span>
-                <span>YouTube 링크만</span>
+              <p className="eyebrow">SOLOQ VERDICT</p>
+              <h1 className="case-title">“이 장면 누구 잘못임?”을 투표로 끝냅니다.</h1>
+              <p className="issue">
+                유튜브 링크를 올리면 탑, 정글, 미드, 원딜, 서폿 과실비율 투표판이 바로 열립니다. 링크를 커뮤니티에 던지고 판정만 받으면 됩니다.
+              </p>
+              <div className="steps">
+                <span>1. 장면 링크</span>
+                <span>2. 쟁점 한 줄</span>
+                <span>3. 과실비율 투표</span>
               </div>
-              <a className="primary-button empty-cta" href="#submit">문철 제보하기</a>
+              <div className="trust-list">
+                <span>로그인 없음</span>
+                <span>YouTube 링크만</span>
+                <span>바로 공유</span>
+              </div>
+              <a className="primary-button empty-cta" href="#submit">첫 투표판 만들기</a>
             </section>
             <aside className="stack">{submitCard}</aside>
           </div>
@@ -325,6 +356,10 @@ export function MooncheckApp() {
                     </div>
                     <h1 className="case-title">{activeCase.title}</h1>
                     <p className="issue">{activeCase.issue}</p>
+                    <div className="case-actions">
+                      <button className="secondary-button" onClick={copyCaseLink}>링크 복사</button>
+                      <a className="secondary-button" href={activeCase.clipUrl} target="_blank" rel="noreferrer">원본 보기</a>
+                    </div>
                   </div>
 
                   <div className="verdict-card">
@@ -415,7 +450,7 @@ export function MooncheckApp() {
                       <button
                         key={item.id}
                         className={`case-list-button ${item.id === activeCase.id ? "active" : ""}`}
-                        onClick={() => setActiveId(item.id)}
+                        onClick={() => selectCase(item.id)}
                       >
                         <span className={statusClass(item.status)}>{item.status}</span>
                         <span className="meta"> {item.tier}</span>
