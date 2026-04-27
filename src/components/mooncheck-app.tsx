@@ -148,6 +148,49 @@ export function MooncheckApp() {
 
   const topLane = activeCase ? getTopLane(activeCase.positions) : "정글";
   const embedUrl = activeCase ? getEmbedUrl(activeCase.clipUrl) : "";
+  const submitCard = (
+    <section className="card" id="submit">
+      <h2 className="section-title">문철 제보</h2>
+      <form className="form" onSubmit={submitCase}>
+        <input
+          className="input"
+          value={draft.title}
+          onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+          placeholder="사건 제목"
+        />
+        <input
+          className="input"
+          value={draft.clipUrl}
+          onChange={(event) => setDraft((current) => ({ ...current, clipUrl: event.target.value }))}
+          placeholder="YouTube 링크"
+        />
+        <div className="form-row">
+          <input
+            className="input"
+            value={draft.timecode}
+            onChange={(event) => setDraft((current) => ({ ...current, timecode: event.target.value }))}
+            placeholder="12:30-13:10"
+          />
+          <select
+            className="select"
+            value={draft.tier}
+            onChange={(event) => setDraft((current) => ({ ...current, tier: event.target.value }))}
+          >
+            {["Iron", "Bronze", "Silver", "Gold", "Platinum", "Emerald", "Diamond", "Master+"].map((tier) => (
+              <option key={tier}>{tier}</option>
+            ))}
+          </select>
+        </div>
+        <textarea
+          className="textarea"
+          value={draft.issue}
+          onChange={(event) => setDraft((current) => ({ ...current, issue: event.target.value }))}
+          placeholder="무엇을 판정받고 싶은지"
+        />
+        <button className="primary-button" disabled={saving}>제보 올리기</button>
+      </form>
+    </section>
+  );
 
   function updateVote(lane: Lane, value: number) {
     if (!activeCase) return;
@@ -249,9 +292,15 @@ export function MooncheckApp() {
             <strong>협곡 문철을 불러오는 중입니다.</strong>
           </section>
         ) : !activeCase ? (
-          <section className="card rules">
-            <strong>아직 등록된 문철이 없습니다.</strong>
-          </section>
+          <div className="grid empty-grid">
+            <section className="card empty-state">
+              <p className="eyebrow">MOONCHECK.GG</p>
+              <h1 className="case-title">첫 문철을 기다리는 중입니다.</h1>
+              <p className="issue">유튜브에 올린 롤 장면 링크와 쟁점을 남기면 바로 과실비율 투표가 열립니다.</p>
+              <a className="primary-button empty-cta" href="#submit">문철 제보하기</a>
+            </section>
+            <aside className="stack">{submitCard}</aside>
+          </div>
         ) : (
           <div className="grid">
             <div className="stack">
@@ -371,47 +420,7 @@ export function MooncheckApp() {
                 </div>
               </section>
 
-              <section className="card" id="submit">
-                <h2 className="section-title">문철 제보</h2>
-                <form className="form" onSubmit={submitCase}>
-                  <input
-                    className="input"
-                    value={draft.title}
-                    onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-                    placeholder="사건 제목"
-                  />
-                  <input
-                    className="input"
-                    value={draft.clipUrl}
-                    onChange={(event) => setDraft((current) => ({ ...current, clipUrl: event.target.value }))}
-                    placeholder="YouTube 링크"
-                  />
-                  <div className="form-row">
-                    <input
-                      className="input"
-                      value={draft.timecode}
-                      onChange={(event) => setDraft((current) => ({ ...current, timecode: event.target.value }))}
-                      placeholder="12:30-13:10"
-                    />
-                    <select
-                      className="select"
-                      value={draft.tier}
-                      onChange={(event) => setDraft((current) => ({ ...current, tier: event.target.value }))}
-                    >
-                      {["Iron", "Bronze", "Silver", "Gold", "Platinum", "Emerald", "Diamond", "Master+"].map((tier) => (
-                        <option key={tier}>{tier}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <textarea
-                    className="textarea"
-                    value={draft.issue}
-                    onChange={(event) => setDraft((current) => ({ ...current, issue: event.target.value }))}
-                    placeholder="무엇을 판정받고 싶은지"
-                  />
-                  <button className="primary-button" disabled={saving}>제보 올리기</button>
-                </form>
-              </section>
+              {submitCard}
             </aside>
           </div>
         )}

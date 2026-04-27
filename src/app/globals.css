@@ -140,6 +140,21 @@ a {
   gap: 10px;
 }
 
+.empty-state {
+  padding: 18px;
+}
+
+.empty-state .case-title {
+  margin-top: 8px;
+}
+
+.empty-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+}
+
 .status-message {
   margin: 0 0 10px;
   border: 1px solid var(--line);

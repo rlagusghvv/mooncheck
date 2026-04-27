@@ -41,81 +41,6 @@ const lanes: Lane[] = ["탑", "정글", "미드", "원딜", "서폿"];
 const dataDir = path.join(process.cwd(), ".mooncheck-data");
 const casesPath = path.join(dataDir, "cases.json");
 
-const seedCases: MooncheckCase[] = [
-  {
-    id: "case-1",
-    title: "바텀 3웨이브 박히는데 정글은 유충을 쳤다",
-    category: "오브젝트 교환",
-    tier: "Emerald",
-    patch: "16.8",
-    clipUrl: "https://replayit.gg/",
-    timecode: "08:14-09:03",
-    issue: "상대 정글 위치가 보인 상태에서 바텀 다이브 각을 방치한 게 맞는지",
-    positions: { 탑: 4, 정글: 48, 미드: 12, 원딜: 21, 서폿: 15 },
-    comments: [
-      {
-        id: "comment-1",
-        authorName: "판정단1",
-        body: "08:27 미드가 먼저 라인 권한을 잃어서 정글 혼자 내려가긴 애매함.",
-        createdAt: "2026-04-27T00:00:00.000Z"
-      },
-      {
-        id: "comment-2",
-        authorName: "판정단2",
-        body: "원딜이 빅웨이브 앞에서 체력 관리를 못 한 지분도 큼.",
-        createdAt: "2026-04-27T00:01:00.000Z"
-      }
-    ],
-    status: "핫케이스",
-    createdAt: "2026-04-27T00:00:00.000Z",
-    voteCount: 128
-  },
-  {
-    id: "case-2",
-    title: "용 30초 전 귀환 타이밍을 놓친 서폿",
-    category: "용 한타",
-    tier: "Diamond",
-    patch: "16.8",
-    clipUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    timecode: "17:42-18:36",
-    issue: "시야를 먼저 잡아야 하는 조합에서 늦은 귀환이 패배 원인인지",
-    positions: { 탑: 10, 정글: 18, 미드: 7, 원딜: 19, 서폿: 46 },
-    comments: [
-      {
-        id: "comment-3",
-        authorName: "판정단1",
-        body: "17:55 제어와드가 없는데 강가로 먼저 들어간 판단이 가장 큼.",
-        createdAt: "2026-04-27T00:02:00.000Z"
-      }
-    ],
-    status: "판정중",
-    createdAt: "2026-04-27T00:02:00.000Z",
-    voteCount: 73
-  },
-  {
-    id: "case-3",
-    title: "사이드 돌던 탑이 한타 합류 안 한 장면",
-    category: "운영",
-    tier: "Platinum",
-    patch: "16.7",
-    clipUrl: "https://replayit.gg/",
-    timecode: "24:10-25:02",
-    issue: "텔이 없는 탑에게 합류 책임을 물을 수 있는지",
-    positions: { 탑: 33, 정글: 11, 미드: 24, 원딜: 20, 서폿: 12 },
-    comments: [
-      {
-        id: "comment-4",
-        authorName: "판정단1",
-        body: "팀이 먼저 미드 2차 앞까지 나간 게 시작점.",
-        createdAt: "2026-04-27T00:04:00.000Z"
-      }
-    ],
-    status: "종결",
-    createdAt: "2026-04-27T00:04:00.000Z",
-    voteCount: 45
-  }
-];
-
 async function writeCases(cases: MooncheckCase[]) {
   await mkdir(dataDir, { recursive: true });
   await writeFile(casesPath, `${JSON.stringify(cases, null, 2)}\n`, "utf-8");
@@ -127,8 +52,8 @@ async function readCases() {
   } catch (error) {
     const code = error instanceof Error && "code" in error ? String(error.code) : "";
     if (code !== "ENOENT") throw error;
-    await writeCases(seedCases);
-    return seedCases;
+    await writeCases([]);
+    return [];
   }
 }
 
