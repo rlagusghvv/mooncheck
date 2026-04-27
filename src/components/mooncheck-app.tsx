@@ -112,6 +112,26 @@ export function MooncheckApp() {
   });
 
   useEffect(() => {
+    async function clearStaleAppCache() {
+      try {
+        const registrations = await navigator.serviceWorker?.getRegistrations?.();
+        await Promise.all(registrations?.map((registration) => registration.unregister()) ?? []);
+      } catch {
+        // Older browsers or blocked storage can fail here. The app should still render.
+      }
+
+      try {
+        const cacheNames = await window.caches?.keys?.();
+        await Promise.all(cacheNames?.map((cacheName) => window.caches.delete(cacheName)) ?? []);
+      } catch {
+        // Cache cleanup is best-effort only.
+      }
+    }
+
+    clearStaleAppCache();
+  }, []);
+
+  useEffect(() => {
     let ignore = false;
 
     async function loadCases() {
