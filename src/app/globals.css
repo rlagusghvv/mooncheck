@@ -386,6 +386,24 @@ a {
   padding: 14px;
 }
 
+.vote-panel-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.vote-panel-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
 .lane-list {
   display: grid;
   gap: 10px;

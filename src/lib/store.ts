@@ -20,6 +20,7 @@ export type MooncheckCase = {
   timecode: string;
   issue: string;
   positions: Record<Lane, number>;
+  voteTotals?: Record<Lane, number>;
   comments: MooncheckComment[];
   status: "판정중" | "종결" | "핫케이스";
   createdAt: string;
@@ -111,8 +112,48 @@ function normalizePositions(input: Partial<VoteInput>) {
   return normalized;
 }
 
+function getEmptyPositions() {
+  return { 탑: 20, 정글: 20, 미드: 20, 원딜: 20, 서폿: 20 } satisfies Record<Lane, number>;
+}
+
+function getZeroVoteTotals() {
+  return { 탑: 0, 정글: 0, 미드: 0, 원딜: 0, 서폿: 0 } satisfies Record<Lane, number>;
+}
+
+function getVoteTotals(item: MooncheckCase) {
+  const existingTotals = item.voteTotals;
+  if (existingTotals) {
+    return lanes.reduce((totals, lane) => {
+      const value = Number(existingTotals[lane]);
+      totals[lane] = Number.isFinite(value) && value > 0 ? value : 0;
+      return totals;
+    }, getZeroVoteTotals());
+  }
+
+  if (item.voteCount <= 0) return getZeroVoteTotals();
+
+  const positions = normalizePositions(item.positions);
+  return lanes.reduce((totals, lane) => {
+    totals[lane] = positions[lane] * item.voteCount;
+    return totals;
+  }, getZeroVoteTotals());
+}
+
+function getPositionsFromTotals(totals: Record<Lane, number>) {
+  return normalizePositions(totals);
+}
+
+function normalizeCase(item: MooncheckCase) {
+  const voteTotals = getVoteTotals(item);
+  return {
+    ...item,
+    positions: item.voteCount > 0 ? getPositionsFromTotals(voteTotals) : getEmptyPositions(),
+    voteTotals
+  };
+}
+
 export async function listCases() {
-  const cases = await readCases();
+  const cases = (await readCases()).map(normalizeCase);
   return [...cases].sort((a, b) => {
     if (a.status === "핫케이스" && b.status !== "핫케이스") return -1;
     if (a.status !== "핫케이스" && b.status === "핫케이스") return 1;
@@ -128,7 +169,8 @@ export async function createCase(input: Partial<CreateCaseInput>) {
     ...value,
     category: "신규 제보",
     patch: "16.8",
-    positions: { 탑: 20, 정글: 20, 미드: 20, 원딜: 20, 서폿: 20 },
+    positions: getEmptyPositions(),
+    voteTotals: getZeroVoteTotals(),
     comments: [],
     status: "판정중",
     createdAt: new Date().toISOString(),
@@ -144,10 +186,19 @@ export async function addVote(caseId: string, vote: Partial<VoteInput>) {
   const index = cases.findIndex((item) => item.id === caseId);
   if (index === -1) throw new Error("케이스를 찾을 수 없습니다.");
 
+  const currentCase = normalizeCase(cases[index]);
+  const submittedVote = normalizePositions(vote);
+  const voteTotals = lanes.reduce((totals, lane) => {
+    totals[lane] = currentCase.voteTotals![lane] + submittedVote[lane];
+    return totals;
+  }, getZeroVoteTotals());
+  const voteCount = currentCase.voteCount + 1;
+
   cases[index] = {
-    ...cases[index],
-    positions: normalizePositions(vote),
-    voteCount: cases[index].voteCount + 1
+    ...currentCase,
+    positions: getPositionsFromTotals(voteTotals),
+    voteTotals,
+    voteCount
   };
 
   await writeCases(cases);

@@ -21,6 +21,7 @@ type VerdictCase = {
   timecode: string;
   issue: string;
   positions: Record<Lane, number>;
+  voteTotals?: Record<Lane, number>;
   comments: VerdictComment[];
   status: "판정중" | "종결" | "핫케이스";
   createdAt: string;
@@ -28,6 +29,7 @@ type VerdictCase = {
 };
 
 const lanes: Lane[] = ["탑", "정글", "미드", "원딜", "서폿"];
+const defaultVote: Record<Lane, number> = { 탑: 20, 정글: 20, 미드: 20, 원딜: 20, 서폿: 20 };
 
 function normalizeVote(positions: Record<Lane, number>, target: Lane, value: number) {
   const next = { ...positions, [target]: value };
@@ -103,6 +105,7 @@ export function MooncheckApp() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [voteDraft, setVoteDraft] = useState<Record<Lane, number>>(defaultVote);
   const [draft, setDraft] = useState({
     title: "",
     clipUrl: "",
@@ -179,6 +182,10 @@ export function MooncheckApp() {
   const topLane = activeCase ? getTopLane(activeCase.positions) : "정글";
   const embedUrl = activeCase ? getEmbedUrl(activeCase.clipUrl) : "";
 
+  useEffect(() => {
+    setVoteDraft(activeCase?.positions ?? defaultVote);
+  }, [activeCase?.id]);
+
   function getCaseUrl(caseId: string) {
     return `${window.location.origin}${window.location.pathname}?case=${caseId}`;
   }
@@ -249,12 +256,7 @@ export function MooncheckApp() {
 
   function updateVote(lane: Lane, value: number) {
     if (!activeCase) return;
-    setCases((current) =>
-      replaceCase(current, {
-        ...activeCase,
-        positions: normalizeVote(activeCase.positions, lane, value)
-      })
-    );
+    setVoteDraft((current) => normalizeVote(current, lane, value));
   }
 
   async function saveVote() {
@@ -266,10 +268,11 @@ export function MooncheckApp() {
       const response = await fetch(`/api/cases/${activeCase.id}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(activeCase.positions)
+        body: JSON.stringify(voteDraft)
       });
       const payload = (await parseApiResponse(response)) as { case: VerdictCase };
       setCases((current) => replaceCase(current, payload.case));
+      setVoteDraft(payload.case.positions);
       setMessage("투표가 반영됐습니다.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "투표를 저장하지 못했습니다.");
@@ -425,21 +428,25 @@ export function MooncheckApp() {
                 </div>
 
                 <div className="vote-panel">
+                  <div className="vote-panel-head">
+                    <strong>내 과실비율</strong>
+                    <span>저장하면 전체 판정에 누적됩니다.</span>
+                  </div>
                   <div className="lane-list">
                     {lanes.map((lane) => (
                       <label key={lane} className="lane-row">
                         <span>{lane}</span>
                         <span className="lane-bar">
-                          <span className="lane-fill" style={{ width: `${activeCase.positions[lane]}%` }} />
+                          <span className="lane-fill" style={{ width: `${voteDraft[lane]}%` }} />
                           <input
                             type="range"
                             min="0"
                             max="100"
-                            value={activeCase.positions[lane]}
+                            value={voteDraft[lane]}
                             onChange={(event) => updateVote(lane, Number(event.target.value))}
                           />
                         </span>
-                        <span className="lane-percent">{activeCase.positions[lane]}%</span>
+                        <span className="lane-percent">{voteDraft[lane]}%</span>
                       </label>
                     ))}
                   </div>
