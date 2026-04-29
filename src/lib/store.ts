@@ -110,32 +110,49 @@ function validateCreateInput(input: Partial<CreateCaseInput>) {
   };
 }
 
-function normalizePositions(input: Partial<VoteInput>) {
+function distributeToPercentages(values: number[]) {
+  const total = values.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return getZeroVoteTotals();
+
+  const raw = values.map((value) => (value / total) * 100);
+  const floors = raw.map(Math.floor);
+  let remainder = 100 - floors.reduce((sum, value) => sum + value, 0);
+  const order = raw
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  order.forEach(({ index }) => {
+    if (remainder <= 0) return;
+    floors[index] += 1;
+    remainder -= 1;
+  });
+
+  return lanes.reduce((normalized, lane, index) => {
+    normalized[lane] = floors[index];
+    return normalized;
+  }, getZeroVoteTotals());
+}
+
+function normalizeVoteInput(input: Partial<VoteInput>) {
   const values = lanes.map((lane) => {
     const value = Number(input[lane]);
     return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
   });
   const total = values.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) throw new Error("과실비율을 먼저 입력해주세요.");
+  return distributeToPercentages(values);
+}
 
-  if (total <= 0) return { 탑: 20, 정글: 20, 미드: 20, 원딜: 20, 서폿: 20 };
-
-  let used = 0;
-  const normalized = {} as Record<Lane, number>;
-  lanes.forEach((lane, index) => {
-    if (index === lanes.length - 1) {
-      normalized[lane] = 100 - used;
-      return;
-    }
-
-    const adjusted = Math.round((values[index] / total) * 100);
-    normalized[lane] = adjusted;
-    used += adjusted;
+function normalizeLegacyPositions(input: Partial<VoteInput>) {
+  const values = lanes.map((lane) => {
+    const value = Number(input[lane]);
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
   });
-  return normalized;
+  return distributeToPercentages(values);
 }
 
 function getEmptyPositions() {
-  return { 탑: 20, 정글: 20, 미드: 20, 원딜: 20, 서폿: 20 } satisfies Record<Lane, number>;
+  return { 탑: 0, 정글: 0, 미드: 0, 원딜: 0, 서폿: 0 } satisfies Record<Lane, number>;
 }
 
 function getZeroVoteTotals() {
@@ -154,7 +171,7 @@ function getVoteTotals(item: MooncheckCase) {
 
   if (item.voteCount <= 0) return getZeroVoteTotals();
 
-  const positions = normalizePositions(item.positions);
+  const positions = normalizeLegacyPositions(item.positions);
   return lanes.reduce((totals, lane) => {
     totals[lane] = positions[lane] * item.voteCount;
     return totals;
@@ -162,7 +179,11 @@ function getVoteTotals(item: MooncheckCase) {
 }
 
 function getPositionsFromTotals(totals: Record<Lane, number>) {
-  return normalizePositions(totals);
+  const values = lanes.map((lane) => {
+    const value = Number(totals[lane]);
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  });
+  return distributeToPercentages(values);
 }
 
 function normalizeCase(item: MooncheckCase) {
@@ -232,7 +253,7 @@ export async function addVote(caseId: string, vote: VoteInput, voterHash: string
     const currentCase = normalizeCase(cases[index]);
     if (currentCase.voterHashes?.[voterHash]) throw new Error("이미 투표한 사건입니다.");
 
-    const submittedVote = normalizePositions(vote);
+    const submittedVote = normalizeVoteInput(vote);
     const voteTotals = lanes.reduce((totals, lane) => {
       totals[lane] = currentCase.voteTotals![lane] + submittedVote[lane];
       return totals;
