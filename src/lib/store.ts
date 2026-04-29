@@ -21,11 +21,14 @@ export type MooncheckCase = {
   issue: string;
   positions: Record<Lane, number>;
   voteTotals?: Record<Lane, number>;
+  voterHashes?: Record<string, Record<Lane, number>>;
   comments: MooncheckComment[];
   status: "판정중" | "종결" | "핫케이스";
   createdAt: string;
   voteCount: number;
 };
+
+export type PublicMooncheckCase = Omit<MooncheckCase, "voterHashes">;
 
 type CreateCaseInput = {
   title: string;
@@ -35,7 +38,7 @@ type CreateCaseInput = {
   issue: string;
 };
 
-type VoteInput = Record<Lane, number>;
+type VoteInput = Partial<Record<Lane, number>>;
 
 const lanes: Lane[] = ["탑", "정글", "미드", "원딜", "서폿"];
 
@@ -142,10 +145,10 @@ function getZeroVoteTotals() {
 function getVoteTotals(item: MooncheckCase) {
   const existingTotals = item.voteTotals;
   if (existingTotals) {
-    return lanes.reduce((totals, lane) => {
+    return lanes.reduce((normalizedTotals, lane) => {
       const value = Number(existingTotals[lane]);
-      totals[lane] = Number.isFinite(value) && value > 0 ? value : 0;
-      return totals;
+      normalizedTotals[lane] = Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+      return normalizedTotals;
     }, getZeroVoteTotals());
   }
 
@@ -167,12 +170,18 @@ function normalizeCase(item: MooncheckCase) {
   return {
     ...item,
     positions: item.voteCount > 0 ? getPositionsFromTotals(voteTotals) : getEmptyPositions(),
-    voteTotals
+    voteTotals,
+    voterHashes: item.voterHashes ?? {}
   };
 }
 
+function toPublicCase(item: MooncheckCase): PublicMooncheckCase {
+  const { voterHashes: _voterHashes, ...publicCase } = normalizeCase(item);
+  return publicCase;
+}
+
 export async function listCases() {
-  const cases = (await readCases()).map(normalizeCase);
+  const cases = (await readCases()).map(toPublicCase);
   return [...cases].sort((a, b) => {
     if (a.status === "핫케이스" && b.status !== "핫케이스") return -1;
     if (a.status !== "핫케이스" && b.status === "핫케이스") return 1;
@@ -190,22 +199,39 @@ export async function createCase(input: Partial<CreateCaseInput>) {
       patch: "16.8",
       positions: getEmptyPositions(),
       voteTotals: getZeroVoteTotals(),
+      voterHashes: {},
       comments: [],
       status: "판정중",
       createdAt: new Date().toISOString(),
       voteCount: 0
     };
 
-    return { cases: [createdCase, ...cases], result: createdCase };
+    return { cases: [createdCase, ...cases], result: toPublicCase(createdCase) };
   });
 }
 
-export async function addVote(caseId: string, vote: Partial<VoteInput>) {
+export async function getVoteStatus(caseId: string, voterHash: string) {
+  const cases = await readCases();
+  const targetCase = cases.find((item) => item.id === caseId);
+  if (!targetCase) throw new Error("케이스를 찾을 수 없습니다.");
+
+  const normalizedCase = normalizeCase(targetCase);
+  const vote = normalizedCase.voterHashes?.[voterHash];
+  return {
+    hasVoted: Boolean(vote),
+    vote,
+    case: toPublicCase(normalizedCase)
+  };
+}
+
+export async function addVote(caseId: string, vote: VoteInput, voterHash: string) {
   return mutateCases((cases) => {
     const index = cases.findIndex((item) => item.id === caseId);
     if (index === -1) throw new Error("케이스를 찾을 수 없습니다.");
 
     const currentCase = normalizeCase(cases[index]);
+    if (currentCase.voterHashes?.[voterHash]) throw new Error("이미 투표한 사건입니다.");
+
     const submittedVote = normalizePositions(vote);
     const voteTotals = lanes.reduce((totals, lane) => {
       totals[lane] = currentCase.voteTotals![lane] + submittedVote[lane];
@@ -216,11 +242,15 @@ export async function addVote(caseId: string, vote: Partial<VoteInput>) {
       ...currentCase,
       positions: getPositionsFromTotals(voteTotals),
       voteTotals,
+      voterHashes: {
+        ...(currentCase.voterHashes ?? {}),
+        [voterHash]: submittedVote
+      },
       voteCount
     };
 
     cases[index] = updatedCase;
-    return { cases, result: updatedCase };
+    return { cases, result: toPublicCase(updatedCase) };
   });
 }
 
@@ -245,6 +275,6 @@ export async function addComment(caseId: string, body: unknown) {
     };
 
     cases[index] = updatedCase;
-    return { cases, result: updatedCase };
+    return { cases, result: toPublicCase(updatedCase) };
   });
 }

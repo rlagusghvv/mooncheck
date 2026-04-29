@@ -447,6 +447,23 @@ a {
   text-align: right;
 }
 
+.lane-percent em {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.vote-total {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+
 .vote-submit {
   align-self: end;
   width: 100%;

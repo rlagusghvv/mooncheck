@@ -28,37 +28,14 @@ type VerdictCase = {
   voteCount: number;
 };
 
+type VoteStatus = {
+  hasVoted: boolean;
+  vote?: Record<Lane, number>;
+  case?: VerdictCase;
+};
+
 const lanes: Lane[] = ["탑", "정글", "미드", "원딜", "서폿"];
-const defaultVote: Record<Lane, number> = { 탑: 20, 정글: 20, 미드: 20, 원딜: 20, 서폿: 20 };
-
-function normalizeVote(positions: Record<Lane, number>, target: Lane, value: number) {
-  const next = { ...positions, [target]: value };
-  const others = lanes.filter((lane) => lane !== target);
-  const remaining = Math.max(0, 100 - value);
-  const otherTotal = others.reduce((sum, lane) => sum + positions[lane], 0);
-
-  if (otherTotal === 0) {
-    const share = Math.floor(remaining / others.length);
-    others.forEach((lane, index) => {
-      next[lane] = index === others.length - 1 ? remaining - share * (others.length - 1) : share;
-    });
-    return next;
-  }
-
-  let used = 0;
-  others.forEach((lane, index) => {
-    if (index === others.length - 1) {
-      next[lane] = remaining - used;
-      return;
-    }
-
-    const adjusted = Math.round((positions[lane] / otherTotal) * remaining);
-    next[lane] = adjusted;
-    used += adjusted;
-  });
-
-  return next;
-}
+const emptyVote = { 탑: 0, 정글: 0, 미드: 0, 원딜: 0, 서폿: 0 } satisfies Record<Lane, number>;
 
 function getEmbedUrl(url: string) {
   try {
@@ -105,7 +82,8 @@ export function MooncheckApp() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [voteDraft, setVoteDraft] = useState<Record<Lane, number>>(defaultVote);
+  const [voteDraft, setVoteDraft] = useState<Record<Lane, number>>(emptyVote);
+  const [voteStatusByCase, setVoteStatusByCase] = useState<Record<string, VoteStatus>>({});
   const [draft, setDraft] = useState({
     title: "",
     clipUrl: "",
@@ -181,9 +159,32 @@ export function MooncheckApp() {
 
   const topLane = activeCase ? getTopLane(activeCase.positions) : "정글";
   const embedUrl = activeCase ? getEmbedUrl(activeCase.clipUrl) : "";
+  const voteStatus = activeCase ? voteStatusByCase[activeCase.id] : undefined;
+  const hasVoted = Boolean(voteStatus?.hasVoted);
+  const voteTotal = lanes.reduce((sum, lane) => sum + voteDraft[lane], 0);
 
   useEffect(() => {
-    setVoteDraft(activeCase?.positions ?? defaultVote);
+    if (!activeCase) return;
+    setVoteDraft(emptyVote);
+
+    let ignore = false;
+    const caseId = activeCase.id;
+    async function loadVoteStatus() {
+      try {
+        const response = await fetch(`/api/cases/${caseId}/vote`, { cache: "no-store" });
+        const payload = (await parseApiResponse(response)) as VoteStatus;
+        if (ignore) return;
+        setVoteStatusByCase((current) => ({ ...current, [caseId]: payload }));
+        if (payload.case) setCases((current) => replaceCase(current, payload.case!));
+      } catch {
+        if (!ignore) setVoteStatusByCase((current) => ({ ...current, [caseId]: { hasVoted: false } }));
+      }
+    }
+
+    loadVoteStatus();
+    return () => {
+      ignore = true;
+    };
   }, [activeCase?.id]);
 
   function getCaseUrl(caseId: string) {
@@ -193,6 +194,13 @@ export function MooncheckApp() {
   function selectCase(caseId: string) {
     setActiveId(caseId);
     window.history.replaceState(null, "", `?case=${caseId}#cases`);
+  }
+
+  function updateVote(lane: Lane, value: number) {
+    setVoteDraft((current) => ({
+      ...current,
+      [lane]: Math.max(0, Math.min(100, Math.round(value)))
+    }));
   }
 
   async function copyCaseLink() {
@@ -254,13 +262,12 @@ export function MooncheckApp() {
     </section>
   );
 
-  function updateVote(lane: Lane, value: number) {
-    if (!activeCase) return;
-    setVoteDraft((current) => normalizeVote(current, lane, value));
-  }
-
   async function saveVote() {
-    if (!activeCase || saving) return;
+    if (!activeCase || saving || hasVoted) return;
+    if (voteTotal <= 0) {
+      setMessage("과실비율을 먼저 입력해주세요.");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -272,7 +279,10 @@ export function MooncheckApp() {
       });
       const payload = (await parseApiResponse(response)) as { case: VerdictCase };
       setCases((current) => replaceCase(current, payload.case));
-      setVoteDraft(payload.case.positions);
+      setVoteStatusByCase((current) => ({
+        ...current,
+        [activeCase.id]: { hasVoted: true, vote: voteDraft, case: payload.case }
+      }));
       setMessage("투표가 반영됐습니다.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "투표를 저장하지 못했습니다.");
@@ -429,29 +439,50 @@ export function MooncheckApp() {
 
                 <div className="vote-panel">
                   <div className="vote-panel-head">
-                    <strong>내 과실비율</strong>
-                    <span>저장하면 전체 판정에 누적됩니다.</span>
+                    <strong>{hasVoted ? "투표 결과" : "내 과실비율"}</strong>
+                    <span>{hasVoted ? "이미 투표했습니다. 결과만 볼 수 있습니다." : "합계가 100이 아니어도 저장 시 자동 환산됩니다."}</span>
                   </div>
-                  <div className="lane-list">
-                    {lanes.map((lane) => (
-                      <label key={lane} className="lane-row">
-                        <span>{lane}</span>
-                        <span className="lane-bar">
-                          <span className="lane-fill" style={{ width: `${voteDraft[lane]}%` }} />
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={voteDraft[lane]}
-                            onChange={(event) => updateVote(lane, Number(event.target.value))}
-                          />
-                        </span>
-                        <span className="lane-percent">{voteDraft[lane]}%</span>
-                      </label>
-                    ))}
-                  </div>
+                  {hasVoted ? (
+                    <div className="lane-list">
+                      {lanes.map((lane) => (
+                        <div key={lane} className="lane-row result">
+                          <span>{lane}</span>
+                          <span className="lane-bar">
+                            <span className="lane-fill" style={{ width: `${activeCase.positions[lane]}%` }} />
+                          </span>
+                          <span className="lane-percent">
+                            {activeCase.positions[lane]}%
+                            {voteStatus?.vote ? <em>내 {voteStatus.vote[lane]}%</em> : null}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="lane-list">
+                      {lanes.map((lane) => (
+                        <label key={lane} className="lane-row">
+                          <span>{lane}</span>
+                          <span className="lane-bar">
+                            <span className="lane-fill" style={{ width: `${voteDraft[lane]}%` }} />
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={voteDraft[lane]}
+                              onChange={(event) => updateVote(lane, Number(event.target.value))}
+                              aria-label={`${lane} 과실비율`}
+                            />
+                          </span>
+                          <span className="lane-percent">{voteDraft[lane]}%</span>
+                        </label>
+                      ))}
+                      <p className="vote-total">입력 합계 {voteTotal}%</p>
+                    </div>
+                  )}
 
-                  <button className="primary-button vote-submit" disabled={saving} onClick={saveVote}>투표 반영</button>
+                  <button className="primary-button vote-submit" disabled={saving || hasVoted || voteTotal <= 0} onClick={saveVote}>
+                    {hasVoted ? "투표 완료" : "투표하기"}
+                  </button>
                 </div>
               </article>
 
