@@ -41,6 +41,7 @@ const lanes: Lane[] = ["탑", "정글", "미드", "원딜", "서폿"];
 
 const dataDir = path.join(process.cwd(), ".mooncheck-data");
 const casesPath = path.join(dataDir, "cases.json");
+let mutationQueue = Promise.resolve();
 
 async function writeCases(cases: MooncheckCase[]) {
   await mkdir(dataDir, { recursive: true });
@@ -56,6 +57,24 @@ async function readCases() {
     await writeCases([]);
     return [];
   }
+}
+
+async function mutateCases<T>(
+  updater: (cases: MooncheckCase[]) => Promise<{ cases: MooncheckCase[]; result: T }> | { cases: MooncheckCase[]; result: T }
+) {
+  const operation = mutationQueue.then(async () => {
+    const currentCases = await readCases();
+    const { cases, result } = await updater(currentCases);
+    await writeCases(cases);
+    return result;
+  });
+
+  mutationQueue = operation.then(
+    () => undefined,
+    () => undefined
+  );
+
+  return operation;
 }
 
 function validateCreateInput(input: Partial<CreateCaseInput>) {
@@ -163,68 +182,69 @@ export async function listCases() {
 
 export async function createCase(input: Partial<CreateCaseInput>) {
   const value = validateCreateInput(input);
-  const cases = await readCases();
-  const createdCase: MooncheckCase = {
-    id: `case-${Date.now()}`,
-    ...value,
-    category: "신규 제보",
-    patch: "16.8",
-    positions: getEmptyPositions(),
-    voteTotals: getZeroVoteTotals(),
-    comments: [],
-    status: "판정중",
-    createdAt: new Date().toISOString(),
-    voteCount: 0
-  };
+  return mutateCases((cases) => {
+    const createdCase: MooncheckCase = {
+      id: `case-${Date.now()}`,
+      ...value,
+      category: "신규 제보",
+      patch: "16.8",
+      positions: getEmptyPositions(),
+      voteTotals: getZeroVoteTotals(),
+      comments: [],
+      status: "판정중",
+      createdAt: new Date().toISOString(),
+      voteCount: 0
+    };
 
-  await writeCases([createdCase, ...cases]);
-  return createdCase;
+    return { cases: [createdCase, ...cases], result: createdCase };
+  });
 }
 
 export async function addVote(caseId: string, vote: Partial<VoteInput>) {
-  const cases = await readCases();
-  const index = cases.findIndex((item) => item.id === caseId);
-  if (index === -1) throw new Error("케이스를 찾을 수 없습니다.");
+  return mutateCases((cases) => {
+    const index = cases.findIndex((item) => item.id === caseId);
+    if (index === -1) throw new Error("케이스를 찾을 수 없습니다.");
 
-  const currentCase = normalizeCase(cases[index]);
-  const submittedVote = normalizePositions(vote);
-  const voteTotals = lanes.reduce((totals, lane) => {
-    totals[lane] = currentCase.voteTotals![lane] + submittedVote[lane];
-    return totals;
-  }, getZeroVoteTotals());
-  const voteCount = currentCase.voteCount + 1;
+    const currentCase = normalizeCase(cases[index]);
+    const submittedVote = normalizePositions(vote);
+    const voteTotals = lanes.reduce((totals, lane) => {
+      totals[lane] = currentCase.voteTotals![lane] + submittedVote[lane];
+      return totals;
+    }, getZeroVoteTotals());
+    const voteCount = currentCase.voteCount + 1;
+    const updatedCase = {
+      ...currentCase,
+      positions: getPositionsFromTotals(voteTotals),
+      voteTotals,
+      voteCount
+    };
 
-  cases[index] = {
-    ...currentCase,
-    positions: getPositionsFromTotals(voteTotals),
-    voteTotals,
-    voteCount
-  };
-
-  await writeCases(cases);
-  return cases[index];
+    cases[index] = updatedCase;
+    return { cases, result: updatedCase };
+  });
 }
 
 export async function addComment(caseId: string, body: unknown) {
   const commentBody = typeof body === "string" ? body.trim() : "";
   if (commentBody.length < 2) throw new Error("댓글은 2자 이상이어야 합니다.");
 
-  const cases = await readCases();
-  const index = cases.findIndex((item) => item.id === caseId);
-  if (index === -1) throw new Error("케이스를 찾을 수 없습니다.");
+  return mutateCases((cases) => {
+    const index = cases.findIndex((item) => item.id === caseId);
+    if (index === -1) throw new Error("케이스를 찾을 수 없습니다.");
 
-  const comment: MooncheckComment = {
-    id: `comment-${Date.now()}`,
-    body: commentBody,
-    authorName: `판정단${cases[index].comments.length + 1}`,
-    createdAt: new Date().toISOString()
-  };
+    const currentCase = normalizeCase(cases[index]);
+    const comment: MooncheckComment = {
+      id: `comment-${Date.now()}`,
+      body: commentBody,
+      authorName: `판정단${currentCase.comments.length + 1}`,
+      createdAt: new Date().toISOString()
+    };
+    const updatedCase = {
+      ...currentCase,
+      comments: [comment, ...currentCase.comments]
+    };
 
-  cases[index] = {
-    ...cases[index],
-    comments: [comment, ...cases[index].comments]
-  };
-
-  await writeCases(cases);
-  return cases[index];
+    cases[index] = updatedCase;
+    return { cases, result: updatedCase };
+  });
 }
